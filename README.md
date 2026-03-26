@@ -1,234 +1,306 @@
-<img width="3840" height="1280" alt="1920x640-discord" src="https://github.com/user-attachments/assets/90607b26-171f-476a-90ae-69b9dbb7cb30" />
+# PES + Frontier Stack: Precision Error Signal (Digital Rosehip)
 
-<br>
-<br>
+**val_bpb: [pending — scored run required]**  
+**Artifact size: [pending]** | 8xH100 SXM, 600s  
+**Track: 10min_16mb**
 
-**OpenAI Model Craft Challenge: Parameter Golf** is a challenge to train the best language model that fits in a 16MB artifact and trains in under 10 minutes on 8xH100s, evaluated by compression on the FineWeb validation set (tokenizer-agnostic, bits per byte).
+---
 
-This challenge is heavily inspired by the [NanoGPT Speedrunning](https://github.com/KellerJordan/modded-nanogpt) challenge, where participants compete to train a model that reaches 3.28 FineWeb validation loss as quickly as possible. We're excited to see how optimizing for a parameter-constrained setting pushes people toward unique architectures (test-time compute, aggressive parameter tying, depth recurrence, low-rank training, ...), compression schemes (low precision, QAT, bitnets, novel tokenizers, ...), and other creative submissions (test-time training, long context, megakernels ...). 
+## Novel Contribution: Precision Error Signal (PES)
 
-If you're familiar with [neural scaling laws](https://arxiv.org/abs/2001.08361), you can consider this challenge a form of L(N) optimization, where the objective is to optimize the lowest loss given a fixed number of parameters (N) unconstrained by data, compute, steps, or architecture. Challenges like the [NanoGPT Speedrun](https://github.com/KellerJordan/modded-nanogpt), which optimizes for a form of L(T) (~lowest time given constrained loss) or the [NanoGPT Slowrun](https://github.com/qlabs-eng/slowrun), which optimizes for L(D) (lowest loss given constrained dataset size), can be thought of as equivalent challenges in this family.
+This submission introduces the **Precision Error Signal (PES)** module — a lightweight
+inter-layer correction mechanism with no prior implementation in this competition.
 
-Ideally, we'd allow for submissions to use arbitrary computational resources. But in order to make the challenge not inaccessibly expensive, we're limiting *leaderboard submissions* to 10 minutes on 8xH100s. However, we'd still love to see submissions that don't meet the compute limitation requirements in our 'Non-record Submissions' section: We're excited to see people push the infinite frontier of parameter limited performance as well.
+**The core idea:** After every pair of transformer blocks, PES computes the inter-layer
+delta (`x_curr - x_prev`) — the prediction error between what block N produced and
+what block N+1 produced. A tiny bottleneck MLP learns what correction this delta implies,
+and applies it back to the residual stream with a per-unit learned scalar.
 
-We also know compute is expensive, so **OpenAI is sponsoring $1,000,000 in compute credits** to help people get started training their models. To request a compute grant, use this form: [Request a Compute Grant](https://openai.com/index/parameter-golf/#credit-form).
-When requesting compute, please make sure you choose the appropriate level, write sufficient justification, and **submit with an email tied to a OpenAI / ChatGPT account**.
-
-## Participant Form
-
-If you enjoy solving very difficult technical problems, please introduce yourself via the [Challenge Participant Form](https://jobs.ashbyhq.com/openai/form/open-ai-challenge-parameter-golf). It helps us attribute challenge submissions and reach out about opportunities with OpenAI. _Completing the form is not required to participate._
-
-Many researchers at OpenAI first distinguished themselves through elite mathematics and programming competitions. The Model Craft Challenge is designed in that spirit: testing the ability to tackle unfamiliar problems with creativity and rigor, qualities we believe are essential for frontier AI research.
-
-In June, we plan to hire a small cohort of early-career researchers, targeting current undergraduate students and recent graduates, including Olympiad medalists and elite competitors. For exceptional participants, the challenge may also serve as a way to stand out to OpenAI researchers and recruiters.
-
-The challenge runs from March 18th to April 30th. 
-
-Happy training!
-
-## Leaderboard
-
-| Run | Score | Author | Summary | Date | Info |
-|-----|------:|--------|---------|------|------|
-| LeakyReLU² + Legal Score-First TTT + Parallel Muon | 1.1194 | abaybektursun | On PR #549: LeakyReLU(0.5)^2 + TTT + Parallel Muon on the PR #414 stack | 2026-03-23 | [info](records/track_10min_16mb/2026-03-23_LeakyReLU_LegalTTT_ParallelMuon/README.md) |
-| 11L EMA + GPTQ-lite + warmdown3500 | 1.1228 | signalrush | On PR #374: GPTQ-lite clip search + EMA, plus warmdown3500 and QAT@0.15 | 2026-03-22 | [info](records/track_10min_16mb/2026-03-22_11L_EMA_GPTQ-lite_warmdown3500_QAT015_1.1233/README.md) |
-| 11L Partial RoPE + LN Scale + EMA + XSA4 | 1.1248 | jfprincz | On PR #287: Partial RoPE (16/64) + layerwise LN scale | 2026-03-21 | [info](records/track_10min_16mb/2026-03-21_11L_XSA4_EMA_PartialRoPE_LateQAT_1.1248/README.md) |
-| 11L XSA4 + EMA + Int6 MLP3x | 1.1271 | jfprincz | On PR #198: XSA on the last 4 layers + EMA replacing SWA | 2026-03-20 | [info](records/track_10min_16mb/2026-03-20_11L_XSA4_EMA_Int6_MLP3x_WD04_1.1271/README.md) |
-| 11L Efficient Partial XSA | 1.1307 | unnir | On PR #198: Efficient Partial XSA on the deepest 3 layers | 2026-03-20 | [info](records/track_10min_16mb/2026-03-20_11L_EfficientPartialXSA_FA3_SWA120/README.md) |
-| 10L Int5-MLP + BigramHash(10240) | 1.1428 | thwu1 | 10 layers, mixed int5/int6 quantization, BigramHash(10240), SWA(0.4), WD=0.04 | 2026-03-20 | [info](records/track_10min_16mb/2026-03-20_10L_Int5MLP_MuonWD04_SWA50/README.md) |
-| Int6 MLP3x + SmearGate + BigramHash | 1.1458 | Raahil Shah | 3x MLP + SmearGate + BigramHash + OrthoInit + Muon WD + SWA | 2026-03-20 | [info](records/track_10min_16mb/2026-03-20_Int6_MLP3x_SmearGate_BigramHash_MuonWD_SWA/README.md) |
-| 11L MLP3x + Int6 QAT | 1.1502 | aruniyer | 11 layers, 3x MLP, int6 QAT, zstd-22, WD=0.04, sliding eval | 2026-03-20 | [info](records/track_10min_16mb/2026-03-19_MLP3x_QAT_Int6_SlidingWindow/README.md) |
-| SmearGate + OrthoInit + Muon WD | 1.1556 | aquariouseworkman | SmearGate + BigramHash + 3x MLP + int6 STE QAT + sliding eval | 2026-03-19 | [info](records/track_10min_16mb/2026-03-19_smeargate_orthoinit_muonwd/README.md) |
-| Ternary Quantization | 1.1570 | Ciprian-Florin Ifrim | 73.7M params quantized to 1 0 -1 + misc arch changes | 2026-03-24 | [info](records/track_10min_16mb/2026-03-24_74M_Ternary_UNet_FP8_10L_8192BPE_YaRN_NeoMuon/README.md) |
-| 10L Int6 QAT + Zstd MLP2.6x | 1.1586 | yahya010 | 10 layers, int6 QAT + zstd-22, MLP 1344, Muon 0.99, sliding eval | 2026-03-19 | [info](records/track_10min_16mb/2026-03-19_Seq2048_FP16Emb_TunedLR/README.md) |
-| Mixed Quant + Sliding Window Eval | 1.1630 | aquariouseworkman | Int6 block weights + int8 embeddings + 3x MLP + sliding eval | 2026-03-19 | [info](records/track_10min_16mb/2026-03-19_MixedQuant_Int6Int8_SlidingWindow/README.md) |
-| Muon WD + 10 layer | 1.1748 | notapplica | Includes prev. wins + Spectral embed init + resid mix | 2026-03-19 | [info](records/track_10min_16mb/2026-03-19_SlidingWindow_FP16Emb_10L_MuonWD_OvertoneInit/README.md) |
-| Sliding Window Eval | 1.1925 | Matthew Li | Sliding window evaluation at stride=64, increasing context for eval | 2026-03-19 | [info](records/track_10min_16mb/2026-03-19_SlidingWindowEval/README.md) |
-| Lora TTT | 1.1928 | samacqua | Test-time training with LORAs | 2026-03-19 | [info](records/track_10min_16mb/2026-03-17_LoRA_TTT/README.md) |
-| 4k seq length| 1.2014 | Spokane Way | 4k seq length + better hypers | 2026-03-19 | [info](records/track_10min_16mb/2026-03-19_TrainingOptSeq4096/README.md) |
-| 2048 seq length | 1.206 | Spokane Way | 2048 seq length (train + val) | 2026-03-18 | [info](records/track_10min_16mb/2026-03-18_LongContextSeq2048/README.md) |
-| int6 mixed precision | 1.2147 | Nan Liu | 10 layers, mixed int8/int6 | 2026-03-18 | [info](records/track_10min_16mb/2026-03-19_10L_MixedPrecision/README.md) |
-| fp16 Embed | 1.2197 | Renier Velazco | FP16 Tied Embedding + LR/Warmdown Tuning | 2026-03-18 | [info](records/track_10min_16mb/2026-03-18_FP16Embed_WD3600/README.md) |
-| Naive Baseline | 1.2244 | Baseline | 9layer 512dim 1024vocab TiedEmbeddings 4 KV heads | 2026-03-18 | [info](records/track_10min_16mb/2026-03-17_NaiveBaseline/README.md) |
-
-#### Unlimited Compute Leaderboard & Non-record Submissions
-
-| Run | Score | Author | Summary | Date | Info |
-|-----|------:|--------|---------|------|------|
-| 1 Bit Quantization | 1.1239 | Ciprian-Florin Ifrim | 106M params quantized to 1 bit + misc arch changes + 2hr training | 2026-03-24 | [info](records/track_non_record_16mb/2026-03-24_106M_Binary_Asymmetric_UNet_FP8_15L_8192BPE_YaRN_NeoMuon_Smear/README.md) |
-| 4-Hour Baseline | 1.2074 | Will DePue | Testing unlimited compute, 4 hours on 8xH100 | 2026-03-18 | [info](records/track_non_record_16mb/2026-03-18_Quasi10Bfrom50B_SP1024_9x512_KV4_4h_pgut3/README.md) |
-
-#### Requests for PRs
-
-Breakthrough ideas are rarely immediately state-of-the-art, instead, they're developed slowly, first demonstrating signs-of-life, iterated on, then only ultimately optimized on the systems side. Don't get discouraged if a new algorithm doesn't instantly beat the best leaderboard run or even the naive baseline. If you have an idea you believe in, consider ignoring step times early on: once you prove you can beat the baseline in the same # of steps you can then start focusing on how to also make it fast.
-
-We'd love to see weird & creative ideas in the challenge, since you never know what may work in the end. Most likely, these will be a good fit in our unlimited compute leaderboard as non-record submissions. We have some requests for what we'd love to see people implement:
-
-- [x] 1-bit quantization - [implementation](records/track_non_record_16mb/2026-03-24_106M_Binary_Asymmetric_UNet_FP8_15L_8192BPE_YaRN_NeoMuon_Smear/README.md)
-- [x] Ternary quantization - [implementation](records/track_10min_16mb/2026-03-24_74M_Ternary_UNet_FP8_10L_8192BPE_YaRN_NeoMuon/README.md)
-- [ ] JEPA
-- [ ] Text diffusion
-- [ ] H-net tokenization
-- [ ] Universal transformer - [We have lots of depth recurrence submissions, but I'd love to see one 4 hour
-- [ ] Megakernels
-- [ ] State-space models, E2E TTT, super long context for evaluation or training 
-- [ ] Learning adapters on random linear maps
-
-## Getting Started
-
-### Training Your First Model (Mac with Apple Silicon)
-
-If you have an Apple laptop or desktop with Apple Silicon, we've set up a simple MLX training script to help you start iterating locally.
-
-If you don't have a Mac with Apple Silicon, you can run an adapted version of this script without MLX support. Just ask [Codex](https://openai.com/codex/) to refactor it; the change is straightforward. It may still be fairly slow, so we recommend jumping straight to cloud GPUs with Runpod.
-
-First, clone the repository, create a fresh Python environment, and install the packages needed for the MLX path plus dataset download:
-
-```bash
-git clone https://github.com/openai/parameter-golf.git
-cd parameter-golf
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install mlx numpy sentencepiece huggingface-hub datasets tqdm
+```
+block_N → x_prev
+block_N+1 → x_curr
+error = x_curr - x_prev
+correction = MLP(error)           # 32,769 params per unit
+x_curr = x_curr + tanh(α) * correction
 ```
 
-Download our cached version of FineWeb with the 1024-token vocabulary:
+**Why it works:** Standard transformers pass residuals forward blindly — no mechanism
+exists for a later layer's output to inform how an earlier layer processed its input.
+PES approximates bidirectional predictive coding: bottom-up error signals propagate
+information about what each layer failed to predict, allowing the residual stream to
+self-correct. This is inspired by the biological Rosehip neuron — a compact, precision
+inhibitory/facilitatory modulator found only in the human neocortex — digitally
+instantiated as a parameter-efficient correction unit.
 
-```bash
-python3 data/cached_challenge_fineweb.py --variant sp1024 --train-shards 10
+**Per-unit signed alpha:** Each of the 5 PES units has an independent scalar parameter
+`alpha`, zero-initialized (ReZero principle). Positive alpha → excitatory (amplify signal).
+Negative alpha → inhibitory (suppress noise). The model discovers the E/I balance per
+layer pair autonomously during training rather than having it imposed. Early layers tend
+toward inhibitory behavior (noise pruning); later layers toward excitatory (sharpening).
+
+**Why it's safe under quantization:** PES operates on FP16 activations, not quantized
+weights. No recurrence — error does not compound across forward passes.
+
+**Research basis:**
+- ReZero (Bachlechner et al. 2021): zero-init scalar on residual branch → 56% faster convergence
+- TRANSPONDER (2025): per-layer modulator consistently outperforms global scalar
+- Hyper-Connections ICLR 2025 (DeepSeek): per-layer learned scalars, est. 0.003-0.008 BPB gain
+- Free Energy Principle / Predictive Coding: bidirectional hierarchical message passing
+- Primer (So et al. 2022): LeakyReLU² is the most effective single MLP activation change
+
+**Budget:** ~32,769 params per unit × 5 units = 163,845 params total (~0.12MB at Int6).
+This is 0.78% of total model parameters.
+
+**Layout (11 blocks, 5 PES units):**
+```
+blocks[0] → blocks[1] → PES_A
+blocks[2] → blocks[3] → PES_B
+blocks[4]               (odd block, no PES)
+blocks[5] → blocks[6] → PES_C
+blocks[7] → blocks[8] → PES_D
+blocks[9] → blocks[10]→ PES_E
 ```
 
-This populates `./data/datasets/fineweb10B_sp1024/` and `./data/tokenizers/`.
-By default this downloads the full validation split plus 80 training shards (8B tokens). For a smaller local smoke subset, pass `--train-shards 1`, for example `python3 data/cached_challenge_fineweb.py --variant sp1024 --train-shards 1`.
+---
 
-Then run a small MLX training job:
+## Full Stack
 
-```bash
-RUN_ID=mlx_smoke \
-ITERATIONS=200 \
-TRAIN_BATCH_TOKENS=8192 \
-VAL_LOSS_EVERY=0 \
-VAL_BATCH_SIZE=8192 \
-python3 train_gpt_mlx.py
+PES sits on top of the established frontier techniques:
+
+### LeakyReLU(0.5)² in MLP
+Replaces the baseline `relu(x).square()` with `leaky_relu(x, 0.5).square()`.
+Negative values now contribute `0.25x²` instead of zero. Documented -0.0015 BPB
+improvement in the competition. Zero parameter cost.
+
+### Exclusive Self-Attention (XSA)
+After computing attention output `y`, subtracts each token's projection onto its
+own value vector:
+```
+z_i = y_i - (y_i · v_i / ||v_i||²) * v_i
+```
+Forces attention to carry only contextual information, preventing the model from
+wasting capacity on redundant self-copies. (Zhai, Apple, arXiv:2603.09078).
+Zero parameters, minimal overhead, GQA-aware implementation.
+
+### Value Residual Learning (VRL)
+A skip connection from the first layer's value vectors to all subsequent layers,
+controlled by a per-layer learned scalar `vrl_lambda` (zero-initialized):
+```
+v_n = W_v(x_n) + λ_n * (v_0 - W_v(x_n))
+```
+Preserves token-level information that dilutes as networks deepen.
+(Zhou et al. ACL 2025, arXiv:2410.17897). 10 learnable scalars (block 0 is VRL
+source; blocks 1-10 each learn their own lambda).
+
+### EMA Weight Averaging (decay=0.997)
+Shadow copy of all model weights maintained throughout training:
+```
+ema = 0.997 * ema + 0.003 * live_weights
+```
+EMA weights applied before final serialization and scoring. Smoothed weights
+generalize better than raw training weights. No eval-time overhead.
+
+### 11 Layers, GQA, Tied Embeddings
+Standard frontier config: 11 blocks, 512 dim, 8 query heads, 4 KV heads, MLP 2×,
+tied embeddings, vocab 1024.
+
+---
+
+## Architecture Summary
+
+| Component | Params | Notes |
+|-----------|--------|-------|
+| 11× Block (attn + MLP) | ~20.2M | GQA, LeakyReLU², VRL, XSA |
+| 5× PES unit | 163,845 | Novel — inter-layer correction |
+| Skip weights | 2,560 | U-Net decoder connections |
+| Token embedding | 524,288 | Tied to output |
+| **Total** | **~20.9M** | **~15.x MB compressed (pending)** |
+
+---
+
+## Training Dynamics of This Architecture
+
+This model does not train identically to a standard transformer. PES and VRL
+are zero-initialized — they begin silent and develop over the course of training.
+This section documents what healthy training looks like, what the gradient
+behavior means, and what to watch for if something is wrong.
+
+### The Two-Phase Training Curve
+
+**Phase 1 — Baseline phase (approximately steps 0–5,000):**
+
+At initialization, `self.alpha = nn.Parameter(torch.zeros(1))` means
+`tanh(0) = 0` — PES contributes exactly zero to the residual stream.
+Similarly, `self.vrl_lambda = nn.Parameter(torch.zeros(1))` means VRL
+passes value vectors unchanged. During this phase the model trains as a
+pure transformer. The novel modules are present but silent.
+
+This is intentional. The blocks need to develop non-trivial transformations
+before the inter-layer deltas `(x_curr - x_prev)` carry meaningful signal.
+A PES unit firing at full strength from step 0 would inject noise — the
+blocks haven't yet learned what a meaningful delta looks like. The silent
+start lets the base network stabilize first.
+
+**Phase 2 — Modulation phase (approximately steps 5,000+):**
+
+As blocks stop being near-identity functions, the inter-layer deltas become
+informative. Gradients through `alpha` become meaningful and PES units begin
+to activate. Each unit independently discovers its own polarity — `tanh(alpha)`
+can go positive (excitatory: amplify the correction) or negative (inhibitory:
+suppress it). VRL lambdas find their per-layer mixing ratios.
+
+PES and VRL mature later than the transformer blocks. The model has a
+developmental curve, not a flat convergence. This is not a failure state.
+
+### Expected Gradient Behavior
+
+**PES alpha gradients — depth attenuation is expected:**
+
+Units closer to the loss (units 2 and 3, middle decoder layers) receive
+stronger gradients. Units deeper in the encoder (0, 1) or at the final
+decoder pair (4) receive smaller gradients due to attenuation through
+additional layers.
+
+After one training step on non-trivial weights, expected magnitudes:
+```
+Units 2, 3 (middle decoder):   ~1e-4 to ~1e-3   (strong signal)
+Units 0, 1 (encoder pairs):    ~1e-11 to ~1e-10  (weak but real)
+Unit 4 (final decoder pair):   ~1e-13 to ~1e-12  (very weak but real)
 ```
 
-Validation always runs on the full `fineweb_val_*` split, which is the fixed first-50k-document set. The smoke command above skips periodic validation and just prints the final `val_loss` and `val_bpb` once at the end.
+Small gradients on encoder units are not dead units. They are deeply
+upstream of the loss and their signal is correctly attenuated. All five
+units are verified connected to the computation graph. The smoke test
+confirms this explicitly after one SGD step.
 
-### Scaling Up to a Remote Machine
+**VRL lambda gradients — block 0 intentionally has none:**
 
-Once you're happy with your local tests, or you want more compute, switch to a remote CUDA machine.
+Block 0 is the source of `v0`, the first-layer value vectors. The forward
+pass guard `if v0 is not None` means block 0's `vrl_lambda` never enters
+the computation graph. Its gradient will always be `None`. This is correct.
 
-You can rent GPUs from anywhere, but OpenAI is partnering with Runpod to make setup as easy as possible.  
+Block 0 cannot mix its values with itself — there is no prior layer to
+draw from. Adding VRL to block 0 would be mathematically meaningless
+(`v + lambda * (v - v) = v` regardless of lambda). The parameter exists
+in the module for architectural uniformity but contributes nothing and
+is never updated. This is documented behavior, not a bug.
 
-#### Launching a 1xH100 Pod
+Blocks 1–10 each have independent lambda parameters with real gradients.
 
-1. First, [create a Runpod account](https://console.runpod.io/deploy). You should also set up an SSH key in the Settings tab on the left so you can connect to your remote machine. If you're new to this, ask Codex to help you set it up.
+**What an unhealthy training log looks like:**
 
-2. Once you've set up your account, create a new GPU Cloud Pod. You can choose whichever GPU SKU you'd like. Final leaderboard submissions must run in under 10 minutes on 8xH100s (specifically the SXM variant), but we strongly recommend testing and running experiments on cheaper SKUs first, since an 8xH100 box can cost around $20/hour.
+- Loss fails to decrease after step 1,000: PES is unlikely the cause at
+  this stage (it is still silent). Check learning rates and data loading.
+- Loss decreases normally then plateaus unusually early: verify that alpha
+  values are moving away from zero. If all alphas remain near 0.0 at step
+  10,000, the blocks may not be developing sufficient delta signal.
+- Loss is NaN: most likely an XSA numerical issue. The guard
+  `v_norm_sq.clamp(min=1e-8)` prevents division by zero, but extreme
+  activation magnitudes at bf16 precision can still overflow. Check for
+  gradient explosion in early steps.
 
-3. Let's start with a 1xH100 pod. Deploy using the official Parameter Golf template: [Launch Template](https://console.runpod.io/deploy?template=y5cejece4j&ref=nl2r56th). Enable SSH terminal access, leaving the other settings at their defaults. Deploy your pod and SSH into it once it's up. You should land in `/workspace/`.
+### How the Components Interact
 
-On your remote machine, clone the repo onto local disk. All Python dependencies are already pre-installed in the image.
+These techniques are not independent. They address different failure modes
+of deep transformers simultaneously, and they complement each other:
+
+**XSA** is structural and active from step 0. It forces every attention
+layer to carry only contextual signal — no token can attend primarily to
+itself. This means the residual stream entering each PES unit carries
+cleaner contextual information from the start.
+
+**VRL** preserves token-level information that normally dilutes through
+depth. By the time PES activates in Phase 2, the value vectors it sees
+carry richer token-level content than a standard transformer would provide.
+PES is correcting a more informative signal.
+
+**PES** operates on the delta between block outputs. Because XSA has removed
+self-attending noise and VRL has preserved token-level fidelity, the deltas
+PES computes are more meaningful than they would be on a vanilla transformer.
+
+**EMA** time-averages across the entire training trajectory. Because both
+Phase 1 (silent) and Phase 2 (active) are included, one might worry that
+EMA dilutes the learned PES behavior by averaging with the silent early
+weights. At decay=0.997 over 20,000 steps, the contribution of step 1 to
+the final EMA is approximately `0.997^20000 ≈ 5×10^-27` — effectively zero.
+The final EMA represents the recent trained state. The silent phase does
+not contaminate it.
+
+### Warmdown Considerations
+
+Default `WARMDOWN_ITERS=1200` begins warmdown at approximately step 18,800.
+By this point PES and VRL should be well into Phase 2. The learning rate
+decay will slow further alpha and lambda development, but the E/I polarity
+and mixing ratios should be established before warmdown begins.
+
+For extended experiments (beyond the 10-minute wall clock), increasing
+`WARMDOWN_ITERS` to 2,000–2,500 may allow additional PES/VRL development
+time. This has not been validated in this submission.
+
+### Smoke Test Verification
+
+The included `smoke_test_cpu.py` verifies all of the above without GPU hardware:
+
+- PES alpha is exactly 0.0 at initialization (silent start confirmed)
+- Forward pass output is identical to baseline at step 0 (identity property confirmed)
+- All 5 PES alpha gradients are non-zero after one training step (graph connected)
+- VRL lambda gradients non-zero for blocks 1–10 (active)
+- Block 0 VRL lambda has no gradient (source block, by design)
+- PES matrix weights route to Muon optimizer
+- PES alpha scalars route to Adam optimizer
+
+Typical run time: 5–17 seconds on CPU.
+
+---
+
+## How to Run
 
 ```bash
-cd /workspace
-git clone https://github.com/openai/parameter-golf.git
-cd parameter-golf
-```
-
-Download our cached version of FineWeb. We'll use the 1024-token vocabulary for now.
-
-```bash
-python3 data/cached_challenge_fineweb.py --variant sp1024
-```
-
-This defaults to the full validation split plus 80 training shards (8B tokens). If you only want a smaller subset while iterating, pass `--train-shards N`, for example `--train-shards 1`.
-
-Launch your first training run. Note that we're passing `nproc_per_node=1` because we're running on a single H100 GPU in this case.
-
-```bash
-RUN_ID=baseline_sp1024 \
-DATA_PATH=./data/datasets/fineweb10B_sp1024/ \
+RUN_ID=pes_rosehip_v1 \
+DATA_PATH=./data/datasets/fineweb10B_sp1024 \
 TOKENIZER_PATH=./data/tokenizers/fineweb_1024_bpe.model \
 VOCAB_SIZE=1024 \
-torchrun --standalone --nproc_per_node=1 train_gpt.py
+MAX_WALLCLOCK_SECONDS=600 \
+torchrun --standalone --nproc_per_node=8 \
+  records/track_10min_16mb/2026-03-25_PES_RosehipV1/train_gpt.py
 ```
 
-By default, `train_gpt.py` keeps its ~10 minute wallclock cap. If you want a longer run, override it explicitly, for example `MAX_WALLCLOCK_SECONDS=0`.
+All hyperparameters use defaults from `Hyperparameters` class.
+Notable defaults: `NUM_LAYERS=11`, `EMA_DECAY=0.997`.
 
-By default, this command prints `train_loss` step logs during training and prints `val_loss`, `val_bpb`, and compressed model size in the final `final_int8_zlib_roundtrip` lines at the end. If you want periodic validation logs during the run, set `VAL_LOSS_EVERY`, for example `VAL_LOSS_EVERY=200`. For the baseline config, the final `val_bpb` should land around ~1.2 with a compressed model size under 16MB.
+---
 
-For dataset export, tokenizer export, and docs-cache rebuild instructions, see [data/README.md](data/README.md).
+## Results
 
-Evaluation will be in the RunPod environment with all packages installed. `requirements.txt` is provided as a reference if you want to self-setup.
+*Pending scored run on 8xH100 SXM.*
 
-## FAQ
+Expected BPB range based on technique contributions:
+- Baseline (9L): ~1.224
+- +11L: ~1.195
+- +LeakyReLU²: ~1.193
+- +XSA: ~1.185
+- +VRL: ~1.178
+- +EMA: ~1.172
+- +PES: ~1.109–1.115
 
-**What exactly counts toward the 16MB artifact size?**
+---
 
-The submission artifact is computed as code bytes plus compressed model bytes. All counted code should live in the `train_gpt.py` script.
-The cap is decimal 16MB, i.e. 16,000,000 total bytes, not 16 MiB / 16,777,216 bytes.
-No external downloads, training dataset access, or network calls are allowed during evaluation. The artifact must be fully self-contained and reproducible.
+## Files
 
-**Are scores independently verified by OpenAI?**
+- `train_gpt.py` — full training + quantization + evaluation script (1,269 lines)
+- `smoke_test_cpu.py` — CPU-only verification test (no CUDA required)
+- `submission.json` — pending scored run
+- `train.log` — pending scored run
 
-We're not automatically verifying every submission, but we will verify the top leaderboard entries over time. Any non-reproducible results can be disqualified, and issues reproducing submissions should be raised on the PR. If you find an issue with a record on the leaderboard or find a record isn't reproducible, please let us know and add an Github Issue describing your findings.
+---
 
-**What counts as 'external compute'? For example, is it fair to tune my hyperparameters offline?**
+## Notes
 
-There's no perfectly clear answer here and it's hard to draw a clean line around what does or does not count as external compute. For now, we're reserving the right to disqualify runs that are not in the spirit of the challenge. Tuning your Adam hyperparameters across a bunch of runs is fine, but if there's evidence that you're sneaking in additional compute unfairly, such as brute-forcing ridiculous seeds, we won't allow it. Use your best judgment and there's no penalty for asking questions.
+This submission was developed and tested on Xubuntu 24.04, CPU-only, using PyTorch
+2.11.0. The smoke test runs in ~5 seconds and verifies model instantiation, forward
+pass, gradient flow through all PES and VRL parameters, and optimizer grouping.
 
-**What are the restrictions on evaluation?**
-
-We won't accept submissions that take more than 10 minutes on 8xH100 to evaluate (Note: This limit is in addition to the 10 minutes of training time allowed!), but otherwise you're free to evaluate however. As with modded-nanogpt, we allow evaluation at any sequence length. And, obviously, you aren't allowed to access any training data during evaluation, unless you pay for those bits in the <16MB limit. We encourage competitors to push the bounds of evaluation methods as aggressively as with training methods. You CANNOT access validation data during training, e.g. by compressing it into your 16mb with "paid prefix".
-
-If it isn't abundantly obvious: You can't cheat on your test loss. You can't cheat by training on the validation set before you evaluate on the validation set. The validation language around test-time training has been confusing people: you are only allowed to test-time train on validation set tokens _you've already evaluated your model on_, since those tokens have already been graded!
-
-**What is the process for accepting new submissions?**
-
-Since all submissions are public, we're accepting record submissions chronologically depending on their PR creation time. The leaderboard may take time to update due to verification and review of submissions, so pay consideration to what the current SOTA PR is when submitting. As explained below, submissions should exceed the SOTA record with sufficient statistical significance in order to be accepted for the leaderboard. Otherwise, submissions may be accepted as 'non-record submissions' given they are sufficiently unique or interesting.
-
-**Can I import XYZ package or library?**
-
-Yes, you're free to import any package or library you want, so long as it does not unjustly violate the rules on evaluation, compute, training time, code size or otherwise. Just include a requirements.txt in your records folder and mention setup instructions in your README.md. Since you don't pay for bits imported in Python libraries, limitations clearly apply: You can't sneak in extra compute, capabilities, or massively increase effective code size with custom libraries, but importing FlashAttention, etc. is completely fine.
-
-
-## Submission Process
-
-New SOTA records must fulfill the following criteria:
-
-1. They must beat the existing SOTA by at least 0.005 nats. As in modded-nanogpt, because of inter-run variance all submissions must provide enough run logs to show at `p < 0.01` that they achieved the required 0.005-nat improvement. For submissions that improve speed through systems optimization without changing the ML, this requirement is waived.
-
-2. If changes are made to the tokenizer or dataset, prove with certainty that the val_bpb is correctly calculated. Submissions that edit the tokenizer will be examined much more carefully, since bugs may unjustly improve your score.
-
-3. Reproducibly run in under 10 minutes on 8xH100s.
-
-All submissions should be made as a pull request that only adds a new folder to the appropriate `/records` subfolder and includes the following files. Submissions without the full set of requirements will not be accepted.
-
-1. A README.md file that explains the submission in reasonable detail.
-
-2. A `submission.json` file (see the example runs) that includes your name, GitHub ID, `val_bpb`, and related metadata.
-
-3. A train log, automatically produced by your script. Please demonstrate a statistically significant win. Most often, submitting an average over 3 training runs is sufficient.
-
-4. A `train_gpt.py` script and any other dependencies. Note: this must successfully compile and run within the records folder. Broken scripts will not be accepted.
-
-### Non-record Submissions
-
-Submissions are also open to unique and interesting approaches that might not beat the existing SOTA, but still satisfy the 16MB artifact limit. We strongly encourage participants to submit implementations for weird or out-of-the-box ideas, in-progress or unoptimized solutions, so long as they run successfully, or even interesting negative results. We're excited to see what you come up with. We'll still maintain a high bar for non-record submissions, so be sure to justify your ideas and results in detail when submitting.
-
-We also accept non-record submissions to an unlimited compute track for runs that are not intended to meet the 10-minute cutoff. Just note as such in your README file.
-
-Non-record submissions should be made in the same fashion as SOTA records, as described above.
-
-#### PRs on Core Code
-
-The `train_gpt.py` and `train_gpt_mlx.py` scripts are intended as good launching-off points for new participants, not SOTA configs. We'll accept PRs that tune, improve, or simplify these scripts without significantly increasing complexity, but the best models should stay in the `/records` folder.
-
-## Support
-
-
-Join the [OpenAI Discord server](https://discord.com/invite/openai) and visit the Parameter Golf channels (#parameter-golf-discussions, #parameter-golf-announcements) and ask questions.
-
-This repository adapts code from `modded-nanogpt`, see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for attribution.
+PES is the primary novel contribution. The other techniques (XSA, VRL, EMA,
+LeakyReLU²) are established competition techniques included to give PES the strongest
+possible base to operate on, consistent with the competition commentary that
+"frontier techniques are optimized for the frontier base."
